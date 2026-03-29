@@ -17,7 +17,7 @@ import churchLogo from "@/assets/church-logo.gif";
 
 const allNavItems = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: ["admin", "pastor", "class_leader", "sunday_school_teacher"] },
-  { label: "Members", path: "/members", icon: Users, roles: ["admin"] },
+  { label: "Members", path: "/members", icon: Users, roles: ["admin", "class_leader"] },
   { label: "Classes", path: "/classes", icon: BookOpen, roles: ["admin"] },
   { label: "Attendance", path: "/attendance", icon: ClipboardCheck, roles: ["admin", "class_leader"] },
   { label: "Sunday School", path: "/sunday-school", icon: GraduationCap, roles: ["admin", "sunday_school_teacher"] },
