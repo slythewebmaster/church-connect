@@ -69,10 +69,11 @@ export default function Members() {
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
+    const classToAssign = role === "class_leader" ? leaderClassId : (newClassId || null);
     const { error } = await supabase.from("members").insert({
       full_name: newName.trim(),
       phone: newPhone.trim() || null,
-      class_id: newClassId || null,
+      class_id: classToAssign,
     });
     if (error) {
       toast.error("Failed to add member");
