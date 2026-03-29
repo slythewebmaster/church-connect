@@ -120,7 +120,7 @@ export default function Members() {
           </h1>
           <p className="text-sm text-muted-foreground">{members.length} {role === "class_leader" ? "class" : "total"} members</p>
         </div>
-        {role === "admin" && (
+        {(role === "admin" || role === "class_leader") && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-1">
@@ -140,19 +140,21 @@ export default function Members() {
                   <Label>Phone</Label>
                   <Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="Phone number" className="h-12" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Class</Label>
-                  <Select value={newClassId} onValueChange={setNewClassId}>
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Select class" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {classes.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.class_name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {role === "admin" && (
+                  <div className="space-y-2">
+                    <Label>Class</Label>
+                    <Select value={newClassId} onValueChange={setNewClassId}>
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Select class" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classes.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.class_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <Button onClick={handleAdd} className="w-full h-12">Add Member</Button>
               </div>
             </DialogContent>
