@@ -228,18 +228,6 @@ export default function Attendance() {
                       >
                         <X className="h-5 w-5" />
                       </button>
-                      <button
-                        onClick={() =>
-                          setAttendance((prev) => ({ ...prev, [member.id]: "absent" }))
-                        }
-                        className={`h-11 w-11 rounded-lg flex items-center justify-center transition-all ${
-                          status === "absent"
-                            ? "bg-destructive text-destructive-foreground shadow-md"
-                            : "bg-muted text-muted-foreground hover:bg-destructive/20"
-                        }`}
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
                     </div>
                   </motion.div>
                 );

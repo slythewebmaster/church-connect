@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Phone, User, Trash2 } from "lucide-react";
+import { Plus, Search, Phone, User, Trash2, Pencil } from "lucide-react";
 
 interface Member {
   id: string;
@@ -31,9 +31,13 @@ export default function Members() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newClassId, setNewClassId] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [leaderClassId, setLeaderClassId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,7 +45,6 @@ export default function Members() {
   }, []);
 
   const fetchData = async () => {
-    // If class_leader, find their class first
     let classId: string | null = null;
     if (role === "class_leader" && user) {
       const { data: classData } = await supabase
@@ -87,6 +90,32 @@ export default function Members() {
     }
   };
 
+  const handleEdit = (member: Member) => {
+    setEditingMember(member);
+    setEditName(member.full_name);
+    setEditPhone(member.phone || "");
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMember || !editName.trim()) return;
+    const { error } = await supabase
+      .from("members")
+      .update({
+        full_name: editName.trim(),
+        phone: editPhone.trim() || null,
+      })
+      .eq("id", editingMember.id);
+    if (error) {
+      toast.error("Failed to update member");
+    } else {
+      toast.success("Member updated");
+      setEditDialogOpen(false);
+      setEditingMember(null);
+      fetchData();
+    }
+  };
+
   const handleRemove = async (memberId: string, memberName: string) => {
     const { error } = await supabase.from("members").delete().eq("id", memberId);
     if (error) {
@@ -109,7 +138,7 @@ export default function Members() {
     );
   }
 
-  const canRemove = role === "admin" || role === "class_leader";
+  const canManage = role === "admin" || role === "class_leader";
 
   return (
     <div className="space-y-4">
@@ -120,7 +149,7 @@ export default function Members() {
           </h1>
           <p className="text-sm text-muted-foreground">{members.length} {role === "class_leader" ? "class" : "total"} members</p>
         </div>
-        {(role === "admin" || role === "class_leader") && (
+        {canManage && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-1">
@@ -162,6 +191,26 @@ export default function Members() {
         )}
       </div>
 
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Member</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Enter name" className="h-12" />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone number" className="h-12" />
+            </div>
+            <Button onClick={handleSaveEdit} className="w-full h-12">Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -190,31 +239,36 @@ export default function Members() {
                   )}
                 </div>
               </div>
-              {canRemove && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Remove Member</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to remove <strong>{member.full_name}</strong>? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleRemove(member.id, member.full_name)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Remove
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+              {canManage && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(member)} className="text-muted-foreground hover:text-foreground">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Member</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to remove <strong>{member.full_name}</strong>? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleRemove(member.id, member.full_name)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               )}
             </CardContent>
           </Card>
