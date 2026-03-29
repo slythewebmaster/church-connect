@@ -190,7 +190,15 @@ export default function Attendance() {
                     <div className="flex gap-2">
                       <button
                         onClick={() =>
-                          setAttendance((prev) => ({ ...prev, [member.id]: "present" }))
+                          setAttendance((prev) => {
+                            const next = { ...prev };
+                            if (next[member.id] === "present") {
+                              delete next[member.id];
+                            } else {
+                              next[member.id] = "present";
+                            }
+                            return next;
+                          })
                         }
                         className={`h-11 w-11 rounded-lg flex items-center justify-center transition-all ${
                           status === "present"
@@ -202,7 +210,15 @@ export default function Attendance() {
                       </button>
                       <button
                         onClick={() =>
-                          setAttendance((prev) => ({ ...prev, [member.id]: "absent" }))
+                          setAttendance((prev) => {
+                            const next = { ...prev };
+                            if (next[member.id] === "absent") {
+                              delete next[member.id];
+                            } else {
+                              next[member.id] = "absent";
+                            }
+                            return next;
+                          })
                         }
                         className={`h-11 w-11 rounded-lg flex items-center justify-center transition-all ${
                           status === "absent"
