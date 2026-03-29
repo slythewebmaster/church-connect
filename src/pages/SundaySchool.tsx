@@ -8,12 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Check, X, Send, Plus, GraduationCap } from "lucide-react";
+import { Check, X, Send, Plus, GraduationCap, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Student {
   id: string;
   full_name: string;
+  phone: string | null;
   class_id: string | null;
 }
 
@@ -40,6 +41,13 @@ export default function SundaySchool() {
   // Add student dialog
   const [studentDialogOpen, setStudentDialogOpen] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentPhone, setNewStudentPhone] = useState("");
+
+  // Edit student dialog
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
 
   useEffect(() => {
     fetchClasses();
@@ -67,7 +75,7 @@ export default function SundaySchool() {
   const fetchStudents = async (classId: string) => {
     const { data } = await supabase
       .from("sunday_school_students")
-      .select("id, full_name, class_id")
+      .select("id, full_name, phone, class_id")
       .eq("class_id", classId)
       .order("full_name");
     if (data) setStudents(data);
@@ -134,19 +142,45 @@ export default function SundaySchool() {
     if (!newStudentName.trim() || !selectedClass) return;
     const { error } = await supabase.from("sunday_school_students").insert({
       full_name: newStudentName.trim(),
+      phone: newStudentPhone.trim() || null,
       class_id: selectedClass,
     });
     if (error) toast.error("Failed to add student");
     else {
       toast.success("Student added");
       setNewStudentName("");
+      setNewStudentPhone("");
       setStudentDialogOpen(false);
+      fetchStudents(selectedClass);
+    }
+  };
+
+  const handleEditStudent = (student: Student) => {
+    setEditingStudent(student);
+    setEditName(student.full_name);
+    setEditPhone(student.phone || "");
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingStudent || !editName.trim()) return;
+    const { error } = await supabase
+      .from("sunday_school_students")
+      .update({ full_name: editName.trim(), phone: editPhone.trim() || null })
+      .eq("id", editingStudent.id);
+    if (error) {
+      toast.error("Failed to update student");
+    } else {
+      toast.success("Student updated");
+      setEditDialogOpen(false);
+      setEditingStudent(null);
       fetchStudents(selectedClass);
     }
   };
 
   const presentCount = Object.values(attendance).filter((s) => s === "present").length;
   const absentCount = Object.values(attendance).filter((s) => s === "absent").length;
+  const canEdit = role === "admin" || role === "sunday_school_teacher";
 
   return (
     <div className="space-y-4">
@@ -203,7 +237,7 @@ export default function SundaySchool() {
 
       {selectedClass && (
         <div className="flex justify-end">
-          {role === "admin" && (
+          {canEdit && (
             <Dialog open={studentDialogOpen} onOpenChange={setStudentDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline" className="gap-1">
@@ -217,6 +251,10 @@ export default function SundaySchool() {
                     <Label>Full Name</Label>
                     <Input value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className="h-12" />
                   </div>
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input value={newStudentPhone} onChange={(e) => setNewStudentPhone(e.target.value)} placeholder="Phone number" className="h-12" />
+                  </div>
                   <Button onClick={handleAddStudent} className="w-full h-12">Add Student</Button>
                 </div>
               </DialogContent>
@@ -224,6 +262,24 @@ export default function SundaySchool() {
           )}
         </div>
       )}
+
+      {/* Edit Student Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Student</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-12" />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone number" className="h-12" />
+            </div>
+            <Button onClick={handleSaveEdit} className="w-full h-12">Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {selectedClass && students.length > 0 && (
         <>
@@ -248,10 +304,27 @@ export default function SundaySchool() {
                         : "bg-card"
                     }`}
                   >
-                    <span className="font-medium text-foreground text-sm">{student.full_name}</span>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="font-medium text-foreground text-sm truncate">{student.full_name}</span>
+                      {canEdit && (
+                        <button
+                          onClick={() => handleEditStudent(student)}
+                          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
                       <button
-                        onClick={() => setAttendance((prev) => ({ ...prev, [student.id]: "present" }))}
+                        onClick={() =>
+                          setAttendance((prev) => {
+                            const next = { ...prev };
+                            if (next[student.id] === "present") delete next[student.id];
+                            else next[student.id] = "present";
+                            return next;
+                          })
+                        }
                         className={`h-11 w-11 rounded-lg flex items-center justify-center transition-all ${
                           status === "present" ? "bg-success text-success-foreground shadow-md" : "bg-muted text-muted-foreground hover:bg-success/20"
                         }`}
@@ -259,7 +332,14 @@ export default function SundaySchool() {
                         <Check className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() => setAttendance((prev) => ({ ...prev, [student.id]: "absent" }))}
+                        onClick={() =>
+                          setAttendance((prev) => {
+                            const next = { ...prev };
+                            if (next[student.id] === "absent") delete next[student.id];
+                            else next[student.id] = "absent";
+                            return next;
+                          })
+                        }
                         className={`h-11 w-11 rounded-lg flex items-center justify-center transition-all ${
                           status === "absent" ? "bg-destructive text-destructive-foreground shadow-md" : "bg-muted text-muted-foreground hover:bg-destructive/20"
                         }`}
