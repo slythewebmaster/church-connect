@@ -4,11 +4,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Phone, User } from "lucide-react";
+import { Plus, Search, Phone, User, Trash2 } from "lucide-react";
 
 interface Member {
   id: string;
@@ -24,7 +25,7 @@ interface ClassItem {
 }
 
 export default function Members() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [search, setSearch] = useState("");
@@ -33,14 +34,32 @@ export default function Members() {
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newClassId, setNewClassId] = useState("");
+  const [leaderClassId, setLeaderClassId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
+    // If class_leader, find their class first
+    let classId: string | null = null;
+    if (role === "class_leader" && user) {
+      const { data: classData } = await supabase
+        .from("classes")
+        .select("id")
+        .eq("leader_id", user.id)
+        .maybeSingle();
+      classId = classData?.id ?? null;
+      setLeaderClassId(classId);
+    }
+
+    let membersQuery = supabase.from("members").select("*, classes(class_name)").order("full_name");
+    if (role === "class_leader" && classId) {
+      membersQuery = membersQuery.eq("class_id", classId);
+    }
+
     const [membersRes, classesRes] = await Promise.all([
-      supabase.from("members").select("*, classes(class_name)").order("full_name"),
+      membersQuery,
       supabase.from("classes").select("id, class_name").order("class_name"),
     ]);
     if (membersRes.data) setMembers(membersRes.data as Member[]);
@@ -67,6 +86,16 @@ export default function Members() {
     }
   };
 
+  const handleRemove = async (memberId: string, memberName: string) => {
+    const { error } = await supabase.from("members").delete().eq("id", memberId);
+    if (error) {
+      toast.error("Failed to remove member");
+    } else {
+      toast.success(`${memberName} removed`);
+      fetchData();
+    }
+  };
+
   const filtered = members.filter((m) =>
     m.full_name.toLowerCase().includes(search.toLowerCase())
   );
@@ -79,12 +108,16 @@ export default function Members() {
     );
   }
 
+  const canRemove = role === "admin" || role === "class_leader";
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Members</h1>
-          <p className="text-sm text-muted-foreground">{members.length} total members</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            {role === "class_leader" ? "My Class Members" : "Members"}
+          </h1>
+          <p className="text-sm text-muted-foreground">{members.length} {role === "class_leader" ? "class" : "total"} members</p>
         </div>
         {role === "admin" && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -140,7 +173,7 @@ export default function Members() {
         {filtered.map((member) => (
           <Card key={member.id} className="shadow-sm">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                 <User className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
@@ -154,6 +187,32 @@ export default function Members() {
                   )}
                 </div>
               </div>
+              {canRemove && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remove Member</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to remove <strong>{member.full_name}</strong>? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleRemove(member.id, member.full_name)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Remove
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </CardContent>
           </Card>
         ))}
