@@ -19,6 +19,11 @@ interface ClassAttendance {
   absentees: string[];
 }
 
+interface SSClassAbsentees {
+  className: string;
+  absentees: string[];
+}
+
 export default function Reports() {
   const { role } = useAuth();
   const [reportType, setReportType] = useState<"weekly" | "monthly">("weekly");
@@ -29,6 +34,7 @@ export default function Reports() {
   const [totalMembers, setTotalMembers] = useState(0);
   const [ssPresent, setSsPresent] = useState(0);
   const [ssTotal, setSsTotal] = useState(0);
+  const [ssAbsentees, setSsAbsentees] = useState<SSClassAbsentees[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,12 +61,13 @@ export default function Reports() {
       endDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${lastDay}`;
     }
 
-    const [attendanceRes, classesRes, membersRes, ssAttRes, ssStudentsRes] = await Promise.all([
+    const [attendanceRes, classesRes, membersRes, ssAttRes, ssStudentsRes, ssClassesRes] = await Promise.all([
       supabase.from("attendance").select("member_id, status, date").gte("date", startDate).lte("date", endDate),
       supabase.from("classes").select("id, class_name"),
       supabase.from("members").select("id, class_id, full_name", { count: "exact" }),
-      supabase.from("sunday_school_attendance").select("status").gte("date", startDate).lte("date", endDate),
-      supabase.from("sunday_school_students").select("id", { count: "exact", head: true }),
+      supabase.from("sunday_school_attendance").select("student_id, status, date").gte("date", startDate).lte("date", endDate),
+      supabase.from("sunday_school_students").select("id, full_name, class_id", { count: "exact" }),
+      supabase.from("sunday_school_classes").select("id, class_name"),
     ]);
 
     const classes = classesRes.data || [];
@@ -91,6 +98,30 @@ export default function Reports() {
     setTotalMembers(membersRes.count || 0);
     setSsPresent((ssAttRes.data || []).filter((r) => r.status === "present").length);
     setSsTotal(ssStudentsRes.count || 0);
+
+    const ssStudents = ssStudentsRes.data || [];
+    const ssClasses = ssClassesRes.data || [];
+    const ssRecords = ssAttRes.data || [];
+    const ssAbsentIds = new Set(
+      ssRecords.filter((r: any) => r.status === "absent").map((r: any) => r.student_id)
+    );
+    const ssAbsenteesByClass: SSClassAbsentees[] = ssClasses.map((c: any) => {
+      const classStudents = ssStudents.filter((s: any) => s.class_id === c.id);
+      const absentees = classStudents
+        .filter((s: any) => ssAbsentIds.has(s.id))
+        .map((s: any) => s.full_name)
+        .sort();
+      return { className: c.class_name, absentees };
+    });
+    const unassignedAbsentees = ssStudents
+      .filter((s: any) => !s.class_id && ssAbsentIds.has(s.id))
+      .map((s: any) => s.full_name)
+      .sort();
+    if (unassignedAbsentees.length > 0) {
+      ssAbsenteesByClass.push({ className: "Unassigned", absentees: unassignedAbsentees });
+    }
+    setSsAbsentees(ssAbsenteesByClass);
+
     setLoading(false);
   };
 
@@ -289,7 +320,40 @@ export default function Reports() {
         </Card>
       )}
 
+
+      {role === "admin" && ssAbsentees.some((c) => c.absentees.length > 0) && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserX className="h-4 w-4 text-destructive" /> Absent Sunday School Students
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {ssAbsentees
+              .filter((c) => c.absentees.length > 0)
+              .map((c) => (
+                <div key={c.className} className="border-l-2 border-destructive pl-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    {c.className}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">
+                      ({c.absentees.length})
+                    </span>
+                  </p>
+                  <ul className="mt-1 space-y-0.5">
+                    {c.absentees.map((name) => (
+                      <li key={name} className="text-sm text-muted-foreground">
+                        • {name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
+
         <Button onClick={exportPDF} variant="outline" className="h-12 gap-2">
           <FileText className="h-4 w-4" /> Export PDF
         </Button>
