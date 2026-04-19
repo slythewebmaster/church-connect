@@ -322,6 +322,7 @@ export default function Reports() {
           </CardContent>
         </Card>
       )}
+      )}
 
       {role === "admin" && ssAbsentees.some((c) => c.absentees.length > 0) && (
         <Card className="shadow-sm">
