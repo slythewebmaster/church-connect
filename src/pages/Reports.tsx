@@ -19,6 +19,11 @@ interface ClassAttendance {
   absentees: string[];
 }
 
+interface SSClassAbsentees {
+  className: string;
+  absentees: string[];
+}
+
 export default function Reports() {
   const { role } = useAuth();
   const [reportType, setReportType] = useState<"weekly" | "monthly">("weekly");
@@ -29,6 +34,7 @@ export default function Reports() {
   const [totalMembers, setTotalMembers] = useState(0);
   const [ssPresent, setSsPresent] = useState(0);
   const [ssTotal, setSsTotal] = useState(0);
+  const [ssAbsentees, setSsAbsentees] = useState<SSClassAbsentees[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -92,6 +98,30 @@ export default function Reports() {
     setTotalMembers(membersRes.count || 0);
     setSsPresent((ssAttRes.data || []).filter((r) => r.status === "present").length);
     setSsTotal(ssStudentsRes.count || 0);
+
+    const ssStudents = ssStudentsRes.data || [];
+    const ssClasses = ssClassesRes.data || [];
+    const ssRecords = ssAttRes.data || [];
+    const ssAbsentIds = new Set(
+      ssRecords.filter((r: any) => r.status === "absent").map((r: any) => r.student_id)
+    );
+    const ssAbsenteesByClass: SSClassAbsentees[] = ssClasses.map((c: any) => {
+      const classStudents = ssStudents.filter((s: any) => s.class_id === c.id);
+      const absentees = classStudents
+        .filter((s: any) => ssAbsentIds.has(s.id))
+        .map((s: any) => s.full_name)
+        .sort();
+      return { className: c.class_name, absentees };
+    });
+    const unassignedAbsentees = ssStudents
+      .filter((s: any) => !s.class_id && ssAbsentIds.has(s.id))
+      .map((s: any) => s.full_name)
+      .sort();
+    if (unassignedAbsentees.length > 0) {
+      ssAbsenteesByClass.push({ className: "Unassigned", absentees: unassignedAbsentees });
+    }
+    setSsAbsentees(ssAbsenteesByClass);
+
     setLoading(false);
   };
 
