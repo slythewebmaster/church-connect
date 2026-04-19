@@ -8,8 +8,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Check, X, Send, Plus, GraduationCap, Pencil } from "lucide-react";
+import { Check, X, Send, Plus, GraduationCap, Pencil, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Student {
   id: string;
@@ -48,6 +58,9 @@ export default function SundaySchool() {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+
+  // Remove student confirmation
+  const [removeTarget, setRemoveTarget] = useState<Student | null>(null);
 
   useEffect(() => {
     fetchClasses();
@@ -178,6 +191,27 @@ export default function SundaySchool() {
     }
   };
 
+  const handleRemoveStudent = async () => {
+    if (!removeTarget) return;
+    const { error } = await supabase
+      .from("sunday_school_students")
+      .delete()
+      .eq("id", removeTarget.id);
+    if (error) {
+      toast.error("Failed to remove student");
+    } else {
+      toast.success("Student removed");
+      const removedId = removeTarget.id;
+      setRemoveTarget(null);
+      setAttendance((prev) => {
+        const next = { ...prev };
+        delete next[removedId];
+        return next;
+      });
+      fetchStudents(selectedClass);
+    }
+  };
+
   const presentCount = Object.values(attendance).filter((s) => s === "present").length;
   const absentCount = Object.values(attendance).filter((s) => s === "absent").length;
   const canEdit = role === "admin" || role === "sunday_school_teacher";
@@ -281,6 +315,27 @@ export default function SundaySchool() {
         </DialogContent>
       </Dialog>
 
+      {/* Remove Student Confirmation */}
+      <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove student?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {removeTarget?.full_name} and their attendance records from this class.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveStudent}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {selectedClass && students.length > 0 && (
         <>
           <div className="flex items-center gap-3 text-sm">
@@ -307,12 +362,20 @@ export default function SundaySchool() {
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <span className="font-medium text-foreground text-sm truncate">{student.full_name}</span>
                       {canEdit && (
-                        <button
-                          onClick={() => handleEditStudent(student)}
-                          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleEditStudent(student)}
+                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setRemoveTarget(student)}
+                            className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </>
                       )}
                     </div>
                     <div className="flex gap-2 shrink-0">
