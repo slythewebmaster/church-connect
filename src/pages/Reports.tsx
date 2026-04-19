@@ -258,17 +258,6 @@ export default function Reports() {
         </Card>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <Button onClick={exportPDF} variant="outline" className="h-12 gap-2">
-          <FileText className="h-4 w-4" /> Export PDF
-        </Button>
-        <Button onClick={exportExcel} variant="outline" className="h-12 gap-2">
-          <Download className="h-4 w-4" /> Export Excel
-        </Button>
-      </div>
-    </div>
-  );
-}
       {role === "admin" && classData.some((c) => c.absentees.length > 0) && (
         <Card className="shadow-sm">
           <CardHeader className="pb-2">
@@ -299,4 +288,16 @@ export default function Reports() {
           </CardContent>
         </Card>
       )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button onClick={exportPDF} variant="outline" className="h-12 gap-2">
+          <FileText className="h-4 w-4" /> Export PDF
+        </Button>
+        <Button onClick={exportExcel} variant="outline" className="h-12 gap-2">
+          <Download className="h-4 w-4" /> Export Excel
+        </Button>
+      </div>
+    </div>
+  );
+}
 
