@@ -191,6 +191,27 @@ export default function SundaySchool() {
     }
   };
 
+  const handleRemoveStudent = async () => {
+    if (!removeTarget) return;
+    const { error } = await supabase
+      .from("sunday_school_students")
+      .delete()
+      .eq("id", removeTarget.id);
+    if (error) {
+      toast.error("Failed to remove student");
+    } else {
+      toast.success("Student removed");
+      const removedId = removeTarget.id;
+      setRemoveTarget(null);
+      setAttendance((prev) => {
+        const next = { ...prev };
+        delete next[removedId];
+        return next;
+      });
+      fetchStudents(selectedClass);
+    }
+  };
+
   const presentCount = Object.values(attendance).filter((s) => s === "present").length;
   const absentCount = Object.values(attendance).filter((s) => s === "absent").length;
   const canEdit = role === "admin" || role === "sunday_school_teacher";
