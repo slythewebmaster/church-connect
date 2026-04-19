@@ -15,6 +15,7 @@ interface ClassAttendance {
   present: number;
   absent: number;
   total: number;
+  absentees: string[];
 }
 
 export default function Reports() {
@@ -55,7 +56,7 @@ export default function Reports() {
     const [attendanceRes, classesRes, membersRes, ssAttRes, ssStudentsRes] = await Promise.all([
       supabase.from("attendance").select("member_id, status, date").gte("date", startDate).lte("date", endDate),
       supabase.from("classes").select("id, class_name"),
-      supabase.from("members").select("id, class_id", { count: "exact" }),
+      supabase.from("members").select("id, class_id, full_name", { count: "exact" }),
       supabase.from("sunday_school_attendance").select("status").gte("date", startDate).lte("date", endDate),
       supabase.from("sunday_school_students").select("id", { count: "exact", head: true }),
     ]);
@@ -69,7 +70,14 @@ export default function Reports() {
       const classRecords = records.filter((r) => classMembers.some((m) => m.id === r.member_id));
       const present = classRecords.filter((r) => r.status === "present").length;
       const absent = classRecords.filter((r) => r.status === "absent").length;
-      return { className: c.class_name, present, absent, total: classMembers.length };
+      const absentMemberIds = new Set(
+        classRecords.filter((r) => r.status === "absent").map((r) => r.member_id)
+      );
+      const absentees = classMembers
+        .filter((m) => absentMemberIds.has(m.id))
+        .map((m) => m.full_name)
+        .sort();
+      return { className: c.class_name, present, absent, total: classMembers.length, absentees };
     });
 
     const present = records.filter((r) => r.status === "present").length;
