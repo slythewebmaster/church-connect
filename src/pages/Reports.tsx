@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, UserX } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -15,9 +16,11 @@ interface ClassAttendance {
   present: number;
   absent: number;
   total: number;
+  absentees: string[];
 }
 
 export default function Reports() {
+  const { role } = useAuth();
   const [reportType, setReportType] = useState<"weekly" | "monthly">("weekly");
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [classData, setClassData] = useState<ClassAttendance[]>([]);
@@ -55,7 +58,7 @@ export default function Reports() {
     const [attendanceRes, classesRes, membersRes, ssAttRes, ssStudentsRes] = await Promise.all([
       supabase.from("attendance").select("member_id, status, date").gte("date", startDate).lte("date", endDate),
       supabase.from("classes").select("id, class_name"),
-      supabase.from("members").select("id, class_id", { count: "exact" }),
+      supabase.from("members").select("id, class_id, full_name", { count: "exact" }),
       supabase.from("sunday_school_attendance").select("status").gte("date", startDate).lte("date", endDate),
       supabase.from("sunday_school_students").select("id", { count: "exact", head: true }),
     ]);
@@ -69,7 +72,14 @@ export default function Reports() {
       const classRecords = records.filter((r) => classMembers.some((m) => m.id === r.member_id));
       const present = classRecords.filter((r) => r.status === "present").length;
       const absent = classRecords.filter((r) => r.status === "absent").length;
-      return { className: c.class_name, present, absent, total: classMembers.length };
+      const absentMemberIds = new Set(
+        classRecords.filter((r) => r.status === "absent").map((r) => r.member_id)
+      );
+      const absentees = classMembers
+        .filter((m) => absentMemberIds.has(m.id))
+        .map((m) => m.full_name)
+        .sort();
+      return { className: c.class_name, present, absent, total: classMembers.length, absentees };
     });
 
     const present = records.filter((r) => r.status === "present").length;
@@ -244,6 +254,37 @@ export default function Reports() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {role === "admin" && classData.some((c) => c.absentees.length > 0) && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserX className="h-4 w-4 text-destructive" /> Absent Members
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {classData
+              .filter((c) => c.absentees.length > 0)
+              .map((c) => (
+                <div key={c.className} className="border-l-2 border-destructive pl-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    {c.className}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">
+                      ({c.absentees.length})
+                    </span>
+                  </p>
+                  <ul className="mt-1 space-y-0.5">
+                    {c.absentees.map((name) => (
+                      <li key={name} className="text-sm text-muted-foreground">
+                        • {name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
           </CardContent>
         </Card>
       )}
