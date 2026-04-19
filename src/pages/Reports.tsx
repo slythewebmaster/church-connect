@@ -319,6 +319,42 @@ export default function Reports() {
           </CardContent>
         </Card>
       )}
+          </CardContent>
+        </Card>
+      )}
+
+      {role === "admin" && ssAbsentees.some((c) => c.absentees.length > 0) && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserX className="h-4 w-4 text-destructive" /> Absent Sunday School Students
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {ssAbsentees
+              .filter((c) => c.absentees.length > 0)
+              .map((c) => (
+                <div key={c.className} className="border-l-2 border-destructive pl-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    {c.className}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">
+                      ({c.absentees.length})
+                    </span>
+                  </p>
+                  <ul className="mt-1 space-y-0.5">
+                    {c.absentees.map((name) => (
+                      <li key={name} className="text-sm text-muted-foreground">
+                        • {name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
 
       <div className="grid grid-cols-2 gap-3">
         <Button onClick={exportPDF} variant="outline" className="h-12 gap-2">
