@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, UserX } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -19,6 +20,7 @@ interface ClassAttendance {
 }
 
 export default function Reports() {
+  const { role } = useAuth();
   const [reportType, setReportType] = useState<"weekly" | "monthly">("weekly");
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [classData, setClassData] = useState<ClassAttendance[]>([]);
@@ -267,4 +269,34 @@ export default function Reports() {
     </div>
   );
 }
+      {role === "admin" && classData.some((c) => c.absentees.length > 0) && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserX className="h-4 w-4 text-destructive" /> Absent Members
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {classData
+              .filter((c) => c.absentees.length > 0)
+              .map((c) => (
+                <div key={c.className} className="border-l-2 border-destructive pl-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    {c.className}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">
+                      ({c.absentees.length})
+                    </span>
+                  </p>
+                  <ul className="mt-1 space-y-0.5">
+                    {c.absentees.map((name) => (
+                      <li key={name} className="text-sm text-muted-foreground">
+                        • {name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      )}
 
