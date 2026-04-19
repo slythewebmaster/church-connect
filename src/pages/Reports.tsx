@@ -319,10 +319,7 @@ export default function Reports() {
           </CardContent>
         </Card>
       )}
-          </CardContent>
-        </Card>
-      )}
-      )}
+
 
       {role === "admin" && ssAbsentees.some((c) => c.absentees.length > 0) && (
         <Card className="shadow-sm">
@@ -357,7 +354,6 @@ export default function Reports() {
 
       <div className="grid grid-cols-2 gap-3">
 
-      <div className="grid grid-cols-2 gap-3">
         <Button onClick={exportPDF} variant="outline" className="h-12 gap-2">
           <FileText className="h-4 w-4" /> Export PDF
         </Button>
