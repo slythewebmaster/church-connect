@@ -59,6 +59,9 @@ export default function SundaySchool() {
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
 
+  // Remove student confirmation
+  const [removeTarget, setRemoveTarget] = useState<Student | null>(null);
+
   useEffect(() => {
     fetchClasses();
   }, []);
