@@ -315,6 +315,27 @@ export default function SundaySchool() {
         </DialogContent>
       </Dialog>
 
+      {/* Remove Student Confirmation */}
+      <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove student?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {removeTarget?.full_name} and their attendance records from this class.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveStudent}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {selectedClass && students.length > 0 && (
         <>
           <div className="flex items-center gap-3 text-sm">
