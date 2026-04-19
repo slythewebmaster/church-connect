@@ -55,12 +55,13 @@ export default function Reports() {
       endDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${lastDay}`;
     }
 
-    const [attendanceRes, classesRes, membersRes, ssAttRes, ssStudentsRes] = await Promise.all([
+    const [attendanceRes, classesRes, membersRes, ssAttRes, ssStudentsRes, ssClassesRes] = await Promise.all([
       supabase.from("attendance").select("member_id, status, date").gte("date", startDate).lte("date", endDate),
       supabase.from("classes").select("id, class_name"),
       supabase.from("members").select("id, class_id, full_name", { count: "exact" }),
-      supabase.from("sunday_school_attendance").select("status").gte("date", startDate).lte("date", endDate),
-      supabase.from("sunday_school_students").select("id", { count: "exact", head: true }),
+      supabase.from("sunday_school_attendance").select("student_id, status, date").gte("date", startDate).lte("date", endDate),
+      supabase.from("sunday_school_students").select("id, full_name, class_id", { count: "exact" }),
+      supabase.from("sunday_school_classes").select("id, class_name"),
     ]);
 
     const classes = classesRes.data || [];
