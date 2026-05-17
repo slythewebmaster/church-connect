@@ -144,11 +144,50 @@ export default function Reports() {
       body: classData.map((c) => [c.className, c.present, c.absent, c.total]),
     });
 
+    let cursorY = (doc as any).lastAutoTable?.finalY ?? 95;
+
+    const absentClasses = classData.filter((c) => c.absentees.length > 0);
+    if (absentClasses.length > 0) {
+      cursorY += 10;
+      doc.setFontSize(13);
+      doc.text("Absent Members", 14, cursorY);
+      autoTable(doc, {
+        startY: cursorY + 4,
+        head: [["Class", "Absent Members"]],
+        body: absentClasses.map((c) => [
+          `${c.className} (${c.absentees.length})`,
+          c.absentees.join(", "),
+        ]),
+        styles: { cellWidth: "wrap" },
+        columnStyles: { 1: { cellWidth: 130 } },
+      });
+      cursorY = (doc as any).lastAutoTable?.finalY ?? cursorY;
+    }
+
+    const ssAbsentClasses = ssAbsentees.filter((c) => c.absentees.length > 0);
+    if (ssAbsentClasses.length > 0) {
+      cursorY += 10;
+      doc.setFontSize(13);
+      doc.text("Absent Sunday School Students", 14, cursorY);
+      autoTable(doc, {
+        startY: cursorY + 4,
+        head: [["Class", "Absent Students"]],
+        body: ssAbsentClasses.map((c) => [
+          `${c.className} (${c.absentees.length})`,
+          c.absentees.join(", "),
+        ]),
+        styles: { cellWidth: "wrap" },
+        columnStyles: { 1: { cellWidth: 130 } },
+      });
+    }
+
     doc.save(`attendance-report-${selectedDate}.pdf`);
     toast("PDF downloaded");
   };
 
   const exportExcel = () => {
+    const wb = XLSX.utils.book_new();
+
     const ws = XLSX.utils.json_to_sheet(
       classData.map((c) => ({
         Class: c.className,
@@ -158,8 +197,24 @@ export default function Reports() {
         "Attendance %": c.total > 0 ? Math.round((c.present / c.total) * 100) : 0,
       }))
     );
-    const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Report");
+
+    const absentRows = classData
+      .filter((c) => c.absentees.length > 0)
+      .flatMap((c) => c.absentees.map((name) => ({ Class: c.className, "Absent Member": name })));
+    if (absentRows.length > 0) {
+      const wsAbsent = XLSX.utils.json_to_sheet(absentRows);
+      XLSX.utils.book_append_sheet(wb, wsAbsent, "Absent Members");
+    }
+
+    const ssAbsentRows = ssAbsentees
+      .filter((c) => c.absentees.length > 0)
+      .flatMap((c) => c.absentees.map((name) => ({ Class: c.className, "Absent Student": name })));
+    if (ssAbsentRows.length > 0) {
+      const wsSsAbsent = XLSX.utils.json_to_sheet(ssAbsentRows);
+      XLSX.utils.book_append_sheet(wb, wsSsAbsent, "Absent SS Students");
+    }
+
     XLSX.writeFile(wb, `attendance-report-${selectedDate}.xlsx`);
     toast("Excel downloaded");
   };
