@@ -37,7 +37,7 @@ isProject: false
 # Expo Mobile App - MongoDB Database System Plan
 
 ## Overview
-Create a comprehensive MongoDB database schema for the **Methodist Community Four Church** mobile app built with Expo/React Native, with MongoDB and Mongoose.
+Create a comprehensive MongoDB database schema for the **Methodist Community Four App** mobile app built with Expo/React Native, with MongoDB and Mongoose.
 
 ### Key Features
 1. **Announcement Submission System** - Members submit announcements → Clerk reviews & approves → Clerk reads on Sunday
