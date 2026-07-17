@@ -5,6 +5,7 @@ ON public.sunday_school_students
 FOR INSERT
 TO authenticated
 WITH CHECK (
+  public.has_role(auth.uid(), 'sunday_school_teacher') AND
   EXISTS (
     SELECT 1 FROM public.sunday_school_classes
     WHERE sunday_school_classes.id = sunday_school_students.class_id
@@ -18,6 +19,7 @@ ON public.sunday_school_students
 FOR DELETE
 TO authenticated
 USING (
+  public.has_role(auth.uid(), 'sunday_school_teacher') AND
   EXISTS (
     SELECT 1 FROM public.sunday_school_classes
     WHERE sunday_school_classes.id = sunday_school_students.class_id
